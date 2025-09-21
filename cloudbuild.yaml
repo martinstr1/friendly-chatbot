@@ -1,0 +1,62 @@
+# Cloud Build config: builds the image, pushes to Artifact Registry, deploys to Cloud Run.
+# This file assumes you'll set up:
+# - Project: ${PROJECT_ID}
+# - Region: ${_REGION} (default southamerica-west1)
+# - Artifact Registry repo: ${_REPO} (default friendly-docker)
+# - Cloud Run service: ${_SERVICE} (default friendly-chatbot)
+# - Secret Manager secret: projects/${PROJECT_ID}/secrets/friendly_chatbot_secret:latest
+
+substitutions:
+  _REGION: "southamerica-west1"
+  _REPO: "friendly-docker"
+  _SERVICE: "friendly-chatbot"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Deploy to Cloud Run"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
+      # CPU during request only; we’ll tighten later in Step 9
+      - "--cpu"
+      - "1"
+      - "--memory"
+      - "512Mi"
+      # SECRET_VALUE will come from Secret Manager (created in Step 3)
+      - "--set-secrets"
+      - "SECRET_VALUE=projects/${PROJECT_ID}/secrets/friendly_chatbot_secret:latest"
+      # Basic labels for observability; extend in Step 9
+      - "--labels"
+      - "app=${_SERVICE},env=dev,owner=friendly"
+

@@ -1,0 +1,11 @@
+# Ignore venv and junk to speed up builds
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.swp
+.DS_Store
+.git
+.gitignore
+.vscode
