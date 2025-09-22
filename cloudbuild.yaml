@@ -50,6 +50,6 @@ steps:
       - "--service-account"
       - "${_RUNTIME_SA}"
       - "--set-secrets"
-      - "SECRET_VALUE=projects/${PROJECT_ID}/secrets/friendly_chatbot_secret:latest"
+      - "SECRET_VALUE=friendly_chatbot_secret:latest"
       - "--labels"
       - "app=${_SERVICE},env=dev,owner=friendly"
