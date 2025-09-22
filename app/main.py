@@ -5,12 +5,12 @@ app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def root():
-    # Basic hello to match Cloud Run validation later
-    return "Hello, Cloud Run!", 200
+    # Text changed to verify CI/CD deployment is live
+    return "Hello, Cloud Run! (CI/CD OK)", 200
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    # We'll inject SECRET_VALUE in Cloud Run later
+    # We'll inject SECRET_VALUE in Cloud Run (via Secret Manager)
     secret_value = os.getenv("SECRET_VALUE")
     present = secret_value is not None and len(secret_value) > 0
     return jsonify({
