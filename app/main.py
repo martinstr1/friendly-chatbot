@@ -1,5 +1,4 @@
 import os
-import hashlib
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -18,14 +17,6 @@ def ping():
         "secret_present": present,
         "note": "Locally this is expected to be false. In Cloud Run it will be true."
     }), 200
-
-@app.route("/secret-fingerprint", methods=["GET"])
-def secret_fingerprint():
-    # Return a non-reversible fingerprint to verify rotation safely
-    secret_value = os.getenv("SECRET_VALUE", "")
-    sha = hashlib.sha256(secret_value.encode("utf-8")).hexdigest()
-    # Only return the hash, never the secret
-    return jsonify({"sha256": sha}), 200
 
 def create_app():
     return app
