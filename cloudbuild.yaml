@@ -43,13 +43,26 @@ steps:
       - "--allow-unauthenticated"
       - "--port"
       - "8080"
+      # Performance & cost controls
+      - "--concurrency"
+      - "20"
+      - "--min-instances"
+      - "0"
+      - "--max-instances"
+      - "3"
+      - "--timeout"
+      - "10s"
+      # CPU only during requests (explicit)
+      - "--no-cpu-boost"
       - "--cpu"
       - "1"
       - "--memory"
       - "512Mi"
+      # Runtime identity and secret
       - "--service-account"
       - "${_RUNTIME_SA}"
       - "--set-secrets"
       - "SECRET_VALUE=friendly_chatbot_secret:latest"
+      # Labels for observability
       - "--labels"
       - "app=${_SERVICE},env=dev,owner=friendly"
