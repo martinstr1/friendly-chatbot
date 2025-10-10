@@ -19,7 +19,7 @@ class Settings:
 
     # Telegram
     TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", required=True)
-    TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", "")
+    TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
     # Calendar
     CALENDAR_ID = env("CALENDAR_ID", required=True)
