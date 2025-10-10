@@ -1,6 +1,4 @@
-# Cloud Build config: builds the image, pushes to Artifact Registry, deploys to Cloud Run.
-# Substitutions can be overridden in the trigger.
-substitutions:
+﻿substitutions:
   _REGION: "southamerica-west1"
   _REPO: "friendly-docker"
   _SERVICE: "friendly-chatbot"
@@ -43,7 +41,6 @@ steps:
       - "--allow-unauthenticated"
       - "--port"
       - "8080"
-      # Performance & cost controls
       - "--concurrency"
       - "20"
       - "--min-instances"
@@ -52,17 +49,12 @@ steps:
       - "3"
       - "--timeout"
       - "10s"
-      # CPU only during requests (explicit)
       - "--no-cpu-boost"
       - "--cpu"
       - "1"
       - "--memory"
       - "512Mi"
-      # Runtime identity and secret
       - "--service-account"
       - "${_RUNTIME_SA}"
       - "--set-secrets"
-      - "SECRET_VALUE=friendly_chatbot_secret:latest"
-      # Labels for observability
-      - "--labels"
-      - "app=${_SERVICE},env=dev,owner=friendly"
+      - "TELEGRAM_BOT_TOKEN=TELEGRAM_BOT_TOKEN:latest,TELEGRAM_WEBHOOK_SECRET=TELEGRAM_WEBHOOK_SECRET:latest,CALENDAR_ID=CALENDAR_ID:latest,EMAIL_FROM=EMAIL_FROM:latest,EMAIL_TO_DEFAULT=EMAIL_TO_DEFAULT:latest,TIMEZONE=TIMEZONE:latest,GC_PROJECT_ID=GC_PROJECT_ID:latest,GC_REGION=GC_REGION:latest,GC_TASKS_REGION=GC_TASKS_REGION:latest,FIRESTORE_COLLECTION=FIRESTORE_COLLECTION:latest,SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest"

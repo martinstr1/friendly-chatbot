@@ -1,22 +1,18 @@
-import os
+﻿import os
 from flask import Flask, jsonify
+from .routes import bp
+
 
 app = Flask(__name__)
+app.register_blueprint(bp)
 
 @app.route("/", methods=["GET"])
 def root():
-    # Text verifies CI/CD is deploying the newest image
     return "Hello, Cloud Run! (CI/CD OK)", 200
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    # SECRET_VALUE is injected via Secret Manager in Cloud Run
-    secret_value = os.getenv("SECRET_VALUE")
-    present = secret_value is not None and len(secret_value) > 0
-    return jsonify({
-        "secret_present": present,
-        "note": "Locally this is expected to be false. In Cloud Run it will be true."
-    }), 200
+    return jsonify({"ok": True}), 200
 
 def create_app():
     return app
