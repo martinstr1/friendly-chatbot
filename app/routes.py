@@ -23,6 +23,13 @@ def _tg_send(chat_id: int, text: str):
         pass
 
 
+def _base_url() -> str:
+    raw = (Settings.BASE_URL or request.url_root.rstrip("/"))
+    if raw.startswith("http://"):
+        raw = "https://" + raw[len("http://"):]
+    return raw
+
+
 @bp.route("/telegram/webhook", methods=["POST"])
 def telegram_webhook():
     secret = Settings.TELEGRAM_WEBHOOK_SECRET
@@ -63,8 +70,7 @@ def telegram_webhook():
             event = cal.create_event(title, start_dt, duration, None)
             storage.set_event(chat_id, event)
 
-            base_url = Settings.BASE_URL or request.url_root.rstrip("/")
-            names = ctasks.schedule_reminders(base_url, chat_id, event)
+            names = ctasks.schedule_reminders(_base_url(), chat_id, event)
             storage.set_task_names(chat_id, names)
 
             _tg_send(chat_id, f"Scheduled: {title} at {start_dt} for {duration}m.")
@@ -83,13 +89,12 @@ def telegram_webhook():
             if not event:
                 raise ValueError("No existing event to reschedule.")
             start_dt = datetime.fromisoformat(f"{date_s}T{time_s}")
-            duration = int(dur_s) if dur_s else int((datetime.fromisoformat(event["end"]) - datetime.fromisoformat(event["start"])) .total_seconds() // 60)
+            duration = int(dur_s) if dur_s else int((datetime.fromisoformat(event["end"]) - datetime.fromisoformat(event["start"])).total_seconds() // 60)
             updated = cal.reschedule_event(event["eventId"], start_dt, duration)
             storage.set_event(chat_id, updated)
 
             ctasks.delete_tasks(storage.get_task_names(chat_id))
-            base_url = Settings.BASE_URL or request.url_root.rstrip("/")
-            names = ctasks.schedule_reminders(base_url, chat_id, updated)
+            names = ctasks.schedule_reminders(_base_url(), chat_id, updated)
             storage.set_task_names(chat_id, names)
 
             _tg_send(chat_id, f"Rescheduled to {start_dt} for {duration}m.")
@@ -110,7 +115,7 @@ def telegram_webhook():
         return ("ok", 200)
 
     if text:
-        _tg_send(chat_id, "Got it. I’m here to help. Use /help for commands.")
+        _tg_send(chat_id, "Got it. I'm here to help. Use /help for commands.")
     return ("ok", 200)
 
 
@@ -131,3 +136,4 @@ def send_reminder():
     else:
         _tg_send(chat_id, f"Reminder: {title} starts in 1 hour at {start}.")
     return jsonify({"ok": True}), 200
+
