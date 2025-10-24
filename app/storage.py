@@ -47,3 +47,17 @@ def get_task_names(chat_id: int) -> List[str]:
     if not snap.exists:
         return []
     return snap.to_dict().get("task_names", [])
+
+
+def get_context(chat_id: int) -> Dict[str, Any]:
+    snap = _doc(chat_id).get()
+    if not snap.exists:
+        return {}
+    return snap.to_dict().get("context", {}) or {}
+
+
+def set_context(chat_id: int, context: Dict[str, Any] | None) -> None:
+    if context:
+        _doc(chat_id).set({"context": context}, merge=True)
+    else:
+        _doc(chat_id).set({"context": firestore.DELETE_FIELD}, merge=True)
