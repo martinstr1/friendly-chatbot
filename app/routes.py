@@ -190,13 +190,28 @@ def telegram_webhook():
             _tg_send(chat_id, f"Failed to schedule: {e}")
         return ("ok", 200)
 
-    if any(word in lower_text for word in ["schedule", "book", "set up", "set-up", "setup", "arrange"]):
+    schedule_keywords = ["schedule", "book", "set up", "set-up", "setup", "arrange"]
+    reschedule_keywords = ["reschedule", "move", "change", "update"]
+
+    if any(word in lower_text for word in schedule_keywords):
         if _handle_scheduling(chat_id, text, is_reschedule=False):
             return ("ok", 200)
+        _tg_send(
+            chat_id,
+            "I'd love to help with that! Please let me know the date and time (YYYY-MM-DD HH:MM) "
+            "and, if you like, the duration for the appointment.",
+        )
+        return ("ok", 200)
 
-    if any(word in lower_text for word in ["reschedule", "move", "change", "update"]):
+    if any(word in lower_text for word in reschedule_keywords):
         if _handle_scheduling(chat_id, text, is_reschedule=True):
             return ("ok", 200)
+        _tg_send(
+            chat_id,
+            "Sure thing—just share the new date and time (YYYY-MM-DD HH:MM) and I'll move the appointment. "
+            "You can include a new duration too if it needs to change.",
+        )
+        return ("ok", 200)
 
     if text.startswith("/reschedule"):
         try:
