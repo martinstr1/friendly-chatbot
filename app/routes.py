@@ -384,6 +384,115 @@ def _handle_cancel(chat_id: int) -> bool:
     return False
 
 
+def _extract_datetime_details(text: str):
+    date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+    time_match = re.search(r"\b(\d{1,2}:\d{2})\b", text)
+    duration_match = re.search(r"\b(\d+)\s?(minutes?|mins?|m|hours?|hrs?|h)\b", text, re.IGNORECASE)
+
+    if not (date_match and time_match):
+        return None
+
+    date_s = date_match.group(1)
+    time_s = time_match.group(1)
+
+    if len(time_s) == 4:
+        time_s = f"0{time_s}"
+
+    duration = None
+    if duration_match:
+        value = int(duration_match.group(1))
+        unit = duration_match.group(2).lower()
+        duration = value * 60 if unit.startswith("h") else value
+
+    consumed = [date_match.span(), time_match.span()]
+    if duration_match:
+        consumed.append(duration_match.span())
+
+    return date_s, time_s, duration, consumed
+
+
+def _extract_title(text: str, consumed_spans: list[tuple[int, int]] | None) -> str:
+    if not consumed_spans:
+        return "Appointment"
+
+    consumed_spans = sorted(consumed_spans)
+    pieces = []
+    cursor = 0
+    for start, end in consumed_spans:
+        if cursor < start:
+            pieces.append(text[cursor:start])
+        cursor = max(cursor, end)
+    if cursor < len(text):
+        pieces.append(text[cursor:])
+
+    raw = " ".join(pieces)
+    raw = re.sub(r"(?i)\b(schedule|book|set up|arrange|reschedule|move|change|cancel|appointment|please|could|would|like|help|me|to|for|on|at|the|a|an|new|my)\b", " ", raw)
+    raw = re.sub(r"\s+", " ", raw).strip()
+    return raw or "Appointment"
+
+
+def _handle_scheduling(chat_id: int, text: str, is_reschedule: bool = False) -> bool:
+    details = _extract_datetime_details(text)
+    if not details:
+        return False
+
+    date_s, time_s, duration, consumed = details
+    try:
+        start_dt = datetime.fromisoformat(f"{date_s}T{time_s}")
+    except ValueError:
+        return False
+
+    title = _extract_title(text, consumed)
+    if not duration:
+        duration = 30
+
+    try:
+        if is_reschedule:
+            event = storage.get_event(chat_id)
+            if not event:
+                raise ValueError("I couldn't find an appointment to move.")
+            updated = cal.reschedule_event(event["eventId"], start_dt, duration)
+            storage.set_event(chat_id, updated)
+            ctasks.delete_tasks(storage.get_task_names(chat_id))
+            names = ctasks.schedule_reminders(_base_url(), chat_id, updated)
+            storage.set_task_names(chat_id, names)
+            event_title = (event.get("summary") or title or "Appointment")
+            _tg_send(
+                chat_id,
+                f"All set. I've moved your {event_title} to {start_dt:%Y-%m-%d at %H:%M} for {duration} minutes.",
+            )
+        else:
+            event = cal.create_event(title, start_dt, duration, None)
+            storage.set_event(chat_id, event)
+            names = ctasks.schedule_reminders(_base_url(), chat_id, event)
+            storage.set_task_names(chat_id, names)
+            _tg_send(
+                chat_id,
+                f"Great! I've scheduled {title} on {start_dt:%Y-%m-%d at %H:%M} for {duration} minutes.",
+            )
+            send_email("Appointment scheduled", f"{title} at {start_dt} ({duration}m).")
+        return True
+    except Exception as e:
+        _tg_send(chat_id, f"Hmm, I wasn't able to finish that: {e}")
+        return True
+
+
+def _handle_cancel(chat_id: int) -> bool:
+    try:
+        event = storage.get_event(chat_id)
+        if event:
+            cal.cancel_event(event["eventId"])
+            ctasks.delete_tasks(storage.get_task_names(chat_id))
+            storage.set_event(chat_id, None)
+        _tg_send(chat_id, "Consider it done—your appointment is cancelled.")
+        return True
+    except Exception as e:
+        _tg_send(chat_id, f"I ran into an issue cancelling that: {e}")
+        return True
+
+    return False
+
+
 @bp.route("/telegram/webhook", methods=["POST"])
 def telegram_webhook():
     secret = Settings.TELEGRAM_WEBHOOK_SECRET
@@ -444,6 +553,14 @@ def telegram_webhook():
             _tg_send(chat_id, f"Failed to schedule: {e}")
         return ("ok", 200)
 
+    if any(word in lower_text for word in ["schedule", "book", "set up", "set-up", "setup", "arrange"]):
+        if _handle_scheduling(chat_id, text, is_reschedule=False):
+            return ("ok", 200)
+
+    if any(word in lower_text for word in ["reschedule", "move", "change", "update"]):
+        if _handle_scheduling(chat_id, text, is_reschedule=True):
+            return ("ok", 200)
+
     if text.startswith("/reschedule"):
         storage.set_state(chat_id, None)
         try:
@@ -472,6 +589,13 @@ def telegram_webhook():
 
     if text.startswith("/cancel"):
         _handle_cancel(chat_id)
+        return ("ok", 200)
+
+    if any(word in lower_text for word in ["cancel", "call off", "drop"]):
+        if _handle_cancel(chat_id):
+            return ("ok", 200)
+
+    if _handle_scheduling(chat_id, text, is_reschedule=False):
         return ("ok", 200)
 
     if any(word in lower_text for word in CANCEL_KEYWORDS):
@@ -538,6 +662,7 @@ def telegram_webhook():
 
     if text:
         _tg_send(chat_id, "Thanks for the note! If you need to schedule, move, or cancel an appointment, just let me know how I can help.")
+        _tg_send(chat_id, "Thanks for the message! If you'd like me to set up a new appointment, just let me know and I'll be glad to help.")
     return ("ok", 200)
 
 
