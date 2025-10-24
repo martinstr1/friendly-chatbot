@@ -45,3 +45,7 @@ This repository includes a `cloudbuild.yaml` file that builds and deploys the co
 3. Verify the deployment by visiting the service URL or checking the `/ping` endpoint for secret availability.
 
 Refer to the Google Cloud Run documentation for detailed setup steps around enabling APIs, configuring service accounts, and managing secrets.
+
+## Branch availability
+- `work`: Primary development branch for ongoing feature work.
+- `intelligence`: Auxiliary branch created to support Codex workflows that require a dedicated branch name.
