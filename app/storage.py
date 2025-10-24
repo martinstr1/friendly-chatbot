@@ -1,5 +1,5 @@
 ﻿from __future__ import annotations
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from google.cloud import firestore
 from .config import Settings
 
@@ -47,3 +47,17 @@ def get_task_names(chat_id: int) -> List[str]:
     if not snap.exists:
         return []
     return snap.to_dict().get("task_names", [])
+
+
+def get_state(chat_id: int) -> Optional[Dict[str, Any]]:
+    snap = _doc(chat_id).get()
+    if not snap.exists:
+        return None
+    return snap.to_dict().get("state")
+
+
+def set_state(chat_id: int, state: Optional[Dict[str, Any]]) -> None:
+    if not state:
+        _doc(chat_id).set({"state": firestore.DELETE_FIELD}, merge=True)
+        return
+    _doc(chat_id).set({"state": state}, merge=True)
